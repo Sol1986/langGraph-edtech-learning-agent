@@ -1,8 +1,4 @@
 """Centralized environment configuration.
-
-Loaded once at import time so every module (quiz_agent, pdf_ingest, server)
-reads identical values regardless of import order. This is the single fix
-for the `load_dotenv` (missing call) bug present in the original scripts.
 """
 
 import os
