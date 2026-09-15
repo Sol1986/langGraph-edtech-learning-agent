@@ -1,0 +1,26 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Project-specific (requested exclusions)
+docs/
+PLAN.md
+prompt.md
+main.py
+document2.pdf
+CLAUDE.md
+agent.ipynb
+OpenSans-VariableFont_wdth,wght.ttf
+
+# OS
+.DS_Store
+Thumbs.db

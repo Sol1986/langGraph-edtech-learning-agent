@@ -1,0 +1,38 @@
+[project]
+name = "memorang"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph>=0.2.60",
+    "langchain-core>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "langchain-qdrant>=0.2.0",
+    "langchain-text-splitters>=0.3.0",
+    "qdrant-client>=1.11.0",
+    "pypdf>=5.0.0",
+    "python-dotenv>=1.0.1",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "python-multipart>=0.0.9",
+    "pydantic>=2.9.0",
+    "ag-ui-langgraph",
+    "copilotkit",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-mock>=3.14.0",
+    "httpx>=0.27.0",
+    "reportlab>=4.2.0",
+    "ruff>=0.7.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["agent.ipynb"]
