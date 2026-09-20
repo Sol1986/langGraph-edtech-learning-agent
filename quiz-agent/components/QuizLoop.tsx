@@ -55,11 +55,22 @@ export function QuizLoop({ quizzes, onComplete }: QuizLoopProps) {
   }
 
   if (isFinishing) {
-    return <p>Scoring your results...</p>;
+    return (
+      <div className="flex flex-col items-center gap-4 py-24 text-center">
+        <span className="h-3 w-3 animate-pulse rounded-full bg-(--color-accent)" />
+        <p className="text-[15px] text-(--color-ink-muted)">Scoring your results…</p>
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-8">
+      <div className="h-1 w-full overflow-hidden rounded-full bg-(--color-border-soft)">
+        <div
+          className="h-full rounded-full bg-(--color-accent) transition-all duration-300 ease-out"
+          style={{ width: `${((currentIndex + 1) / quizzes.length) * 100}%` }}
+        />
+      </div>
       <QuizQuestion
         key={currentIndex}
         quiz={quizzes[currentIndex]}
@@ -68,7 +79,7 @@ export function QuizLoop({ quizzes, onComplete }: QuizLoopProps) {
         onResult={handleResult}
         onNext={handleNext}
       />
-      {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
+      {error && <p className="text-sm text-(--color-danger)">{error}</p>}
     </div>
   );
 }

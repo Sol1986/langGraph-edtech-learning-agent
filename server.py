@@ -1,8 +1,6 @@
 import uuid
 from typing import Annotated
 
-from ag_ui_langgraph import add_langgraph_fastapi_endpoint
-from copilotkit import LangGraphAGUIAgent
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
@@ -122,20 +120,6 @@ async def get_hint(body: HintRequest) -> HintResponse:
 async def get_summary(body: SummaryRequest) -> SummaryResponse:
     """Deterministic, no-LLM summary of the learner's results (see summary.py)."""
     return compute_summary(body.results)
-
-
-quiz_agent = LangGraphAGUIAgent(
-    name="quiz_agent",
-    description="An agent that creates a quiz",
-    graph=graph,
-)
-
-
-add_langgraph_fastapi_endpoint(
-    app=app,
-    agent=quiz_agent,
-    path="/copilotkit",
-)
 
 
 if __name__ == "__main__":

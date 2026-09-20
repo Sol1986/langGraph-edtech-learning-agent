@@ -2,7 +2,7 @@
 
 export interface UploadPdfResponse {
   thread_id: string;
-  topic: string | null;
+  course_topic: string | null;
   learning_plan: string | null;
   status: string;
 }

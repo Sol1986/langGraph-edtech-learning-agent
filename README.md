@@ -123,18 +123,16 @@ no-LLM pass/fail summary of the learner's first-attempt results).
 - [LangGraph](https://langchain-ai.github.io/langgraph/) + [LangChain](https://python.langchain.com/) — the quiz-generation agent (`quiz_agent.py`)
 - [Qdrant](https://qdrant.tech/) — vector store for document chunk embeddings (`pdf_ingest.py`)
 - [OpenAI](https://platform.openai.com/) — chat + embedding models
-- [CopilotKit](https://www.copilotkit.ai/) / [AG-UI](https://github.com/ag-ui-protocol/ag-ui) — streams the agent to the frontend
 
 **Frontend** (`quiz-agent/`)
 - [Next.js](https://nextjs.org/) 16 + React 19
-- CopilotKit React UI/core
 - Tailwind CSS
 
 ## Project structure
 
 ```
 .
-├── server.py           # FastAPI app: HTTP endpoints + CopilotKit/AG-UI wiring
+├── server.py           # FastAPI app: HTTP endpoints
 ├── quiz_agent.py        # LangGraph agent: state, nodes, and graph wiring
 ├── pdf_ingest.py        # PDF → text → chunks → Qdrant embeddings
 ├── summary.py           # Deterministic scoring/summary logic
@@ -196,7 +194,6 @@ itself served at `http://localhost:3000`.
 | POST   | `/api/resume/{thread_id}`   | Submits (or approves) feedback and resumes the graph to completion |
 | POST   | `/api/hint`                 | Returns a RAG-grounded hint for a quiz question, without revealing the answer |
 | POST   | `/api/summary`              | Computes a deterministic score/summary from quiz results |
-| POST   | `/copilotkit`                | AG-UI/CopilotKit streaming endpoint used by the frontend |
 
 ## Testing & linting
 

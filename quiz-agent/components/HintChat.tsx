@@ -15,11 +15,8 @@ interface HintMessage {
   sourcePages?: number[];
 }
 
-// Small chat-style widget for in-quiz hints. Talks to the custom /api/hint
-// endpoint (RAG-grounded, see server.py) rather than the CopilotKit agent --
-// there's no conversational node in the graph for it to dispatch to, so this
-// is a lightweight custom chat UI rather than a wired-up CopilotKit chat
-// component (which expects to talk to the agent runtime).
+// Small chat-style widget for in-quiz hints, backed by the RAG-grounded
+// /api/hint endpoint (see server.py).
 export function HintChat({ question, correctAnswer }: HintChatProps) {
   const [messages, setMessages] = useState<HintMessage[]>([]);
   const [input, setInput] = useState("");
@@ -47,35 +44,45 @@ export function HintChat({ question, correctAnswer }: HintChatProps) {
   }
 
   return (
-    <div className="border dark:border-gray-700 rounded p-3 flex flex-col gap-2 bg-gray-50 dark:bg-gray-900">
-      <div className="flex flex-col gap-2">
-        {messages.map((m, i) => (
-          <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
-            <p className="inline-block rounded px-2 py-1 bg-white dark:bg-gray-800 border dark:border-gray-700 text-sm text-gray-900 dark:text-gray-100">
-              {m.text}
-            </p>
-            {m.sourcePages && m.sourcePages.length > 0 && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Referenced from page(s): {m.sourcePages.join(", ")}
-              </p>
-            )}
-          </div>
-        ))}
-        {isLoading && <p className="text-sm text-gray-500 dark:text-gray-400">Thinking...</p>}
-      </div>
+    <div className="flex flex-col gap-3 rounded-2xl border border-(--color-border-soft) bg-(--color-surface) p-4">
+      {messages.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {messages.map((m, i) => (
+            <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
+              <div className={m.role === "user" ? "max-w-[85%]" : "max-w-[85%]"}>
+                <p
+                  className={`inline-block rounded-2xl px-3.5 py-2 text-[14px] ${
+                    m.role === "user"
+                      ? "bg-(--color-accent) text-white"
+                      : "border border-(--color-border-soft) bg-white text-(--color-ink)"
+                  }`}
+                >
+                  {m.text}
+                </p>
+                {m.sourcePages && m.sourcePages.length > 0 && (
+                  <p className="mt-1 text-xs text-(--color-ink-muted)">
+                    Referenced from page(s): {m.sourcePages.join(", ")}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+          {isLoading && <p className="text-sm text-(--color-ink-muted)">Thinking…</p>}
+        </div>
+      )}
       <form onSubmit={handleSend} className="flex gap-2">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask for a hint or to learn more..."
-          className="flex-1 border dark:border-gray-600 rounded px-2 py-1 text-sm"
+          placeholder="Ask for a hint or to learn more…"
+          className="flex-1 rounded-full border border-(--color-border) bg-white px-4 py-2 text-[14px] outline-none transition focus:border-(--color-accent) focus:ring-4 focus:ring-(--color-accent)/10"
           disabled={isLoading}
         />
         <button
           type="submit"
           disabled={isLoading || !input.trim()}
-          className="rounded bg-gray-700 text-white px-3 py-1 text-sm disabled:opacity-50"
+          className="rounded-full bg-(--color-ink) px-4 py-2 text-[14px] font-medium text-white transition hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
         >
           Ask
         </button>
