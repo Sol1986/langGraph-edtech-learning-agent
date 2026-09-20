@@ -153,6 +153,8 @@ no-LLM pass/fail summary of the learner's first-attempt results).
 - Node.js (for the frontend)
 - An [OpenAI API key](https://platform.openai.com/api-keys)
 - A [Qdrant](https://qdrant.tech/) instance (e.g. [Qdrant Cloud](https://cloud.qdrant.io/)) and API key
+- A [Redis](https://redis.io/) instance with the RedisJSON and RediSearch modules
+  (Redis 8+, Redis Stack, or [Redis Cloud](https://redis.io/cloud/)) for graph checkpointing
 
 ### Backend setup
 
@@ -168,7 +170,10 @@ no-LLM pass/fail summary of the learner's first-attempt results).
    OPENAI_API_KEY=
    QDRANT_URL=
    QDRANT_API_KEY=
+   REDIS_URL=
    ```
+   `REDIS_URL` is a standard connection string, e.g. `redis://default:<password>@<host>:<port>`
+   (use `rediss://` for TLS).
 3. Run the API server:
    ```bash
    uv run python server.py
@@ -208,5 +213,9 @@ make verify-phase    # all of the above
 
 - Uploading a new PDF replaces the shared Qdrant collection (`pdf_documents`)
   — this is a single-document MVP, not per-session/multi-tenant.
-- The quiz-generation graph uses `MemorySaver` for checkpointing, so
-  in-progress threads are in-memory only and reset on server restart.
+- The quiz-generation graph checkpoints to Redis (`RedisSaver`, configured via
+  `REDIS_URL`), so in-progress threads survive a server restart and can be
+  resumed with the same `thread_id`. Checkpoints have no TTL yet, so old
+  threads accumulate in Redis until removed.
+- Redis is required at startup: `quiz_agent.py` creates its search indexes on
+  import, so the server will not start without a reachable `REDIS_URL`.

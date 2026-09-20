@@ -4,7 +4,9 @@ from typing import Annotated
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.redis import RedisSaver
+
+# from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
 # Send lets LangGraph dynamically send many chunks to the same reviewer node
@@ -13,7 +15,7 @@ from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient
 from typing_extensions import TypedDict
 
-from config import QDRANT_API_KEY, QDRANT_COLLECTION_NAME, QDRANT_URL
+from config import QDRANT_API_KEY, QDRANT_COLLECTION_NAME, QDRANT_URL, require_redis_url
 
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
@@ -517,6 +519,9 @@ builder.add_conditional_edges(
 )
 builder.add_edge("generate_quiz", END)
 
-memory = MemorySaver()  # due to HITL so Graph loads saved state
+# memory = MemorySaver()  # replaced with redis
+
+memory = RedisSaver(redis_url=require_redis_url())
+memory.setup()
 
 graph = builder.compile(interrupt_before=["human_feedback"], checkpointer=memory)

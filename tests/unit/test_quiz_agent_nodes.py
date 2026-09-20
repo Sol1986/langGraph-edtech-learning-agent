@@ -47,7 +47,7 @@ def test_learning_plan_builder_happy_path(monkeypatch):
 
     result = quiz_agent.learning_plan_builder({"reviews": [make_chunk_review()]})
 
-    assert result["topic"] == "Test Topic"
+    assert result["course_topic"] == "Test Topic"
     assert "Section" in result["learning_plan"]
 
 
