@@ -22,7 +22,6 @@ embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 llm = ChatOpenAI(model="gpt-5.6-luna")
 
 _vector_store: QdrantVectorStore | None = None
-_chunk_count: int | None = None
 
 
 def get_vector_store() -> QdrantVectorStore:
@@ -50,16 +49,20 @@ def get_vector_store() -> QdrantVectorStore:
 
 
 def get_chunk_count() -> int:
-    """Lazily fetch the total chunk count of the shared Qdrant collection.
+    """Fetch the current total chunk count of the shared Qdrant collection.
 
     Used to size the retriever's k in answer_question so retrieval is not
     arbitrarily capped below the full ingested document.
+
+    Deliberately NOT cached: uploading a new PDF replaces the whole collection, so a
+    remembered count goes stale (and every ECS task would remember its own). One cheap
+    count query per call is worth always sizing k to the document that is really there.
     """
-    global _chunk_count
-    if _chunk_count is None:
-        client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-        _chunk_count = client.count(QDRANT_COLLECTION_NAME, exact=True).count
-    return _chunk_count
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+    try:
+        return client.count(QDRANT_COLLECTION_NAME, exact=True).count
+    finally:
+        client.close()
 
 
 # This class defines the exact structure we want the LLM to return for every PDF chunk

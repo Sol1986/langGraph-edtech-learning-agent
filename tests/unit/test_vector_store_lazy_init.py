@@ -60,24 +60,29 @@ def test_get_vector_store_singleton(monkeypatch):
     assert len(calls) == 1
 
 
-def test_get_chunk_count_singleton(monkeypatch):
+def test_get_chunk_count_reflects_a_newly_uploaded_pdf(monkeypatch):
+    """Regression: the count used to be cached forever, so after a second PDF replaced
+    the collection, retrieval's k stayed sized for the first document."""
     from types import SimpleNamespace
 
-    calls = []
+    counts = iter([37, 52])
+    closed = []
 
     class FakeQdrantClient:
         def __init__(self, **kwargs):
             pass
 
         def count(self, collection_name, exact=True):
-            calls.append(collection_name)
-            return SimpleNamespace(count=37)
+            return SimpleNamespace(count=next(counts))
+
+        def close(self):
+            closed.append(True)
 
     monkeypatch.setattr(quiz_agent, "QdrantClient", FakeQdrantClient)
 
     assert quiz_agent.get_chunk_count() == 37
-    assert quiz_agent.get_chunk_count() == 37
-    assert len(calls) == 1  # cached after the first call
+    assert quiz_agent.get_chunk_count() == 52  # a new PDF replaced the collection
+    assert len(closed) == 2  # the client is closed each time, so nothing leaks
 
 
 def test_answer_question_retriever_not_capped_at_two(monkeypatch):
@@ -85,7 +90,7 @@ def test_answer_question_retriever_not_capped_at_two(monkeypatch):
 
     fake_store = FakeVectorStore()
     monkeypatch.setattr(quiz_agent, "_vector_store", fake_store)
-    monkeypatch.setattr(quiz_agent, "_chunk_count", 37)
+    monkeypatch.setattr(quiz_agent, "get_chunk_count", lambda: 37)
     fake_llm = FakeLLM({quiz_agent.QuestionAnswer: make_question_answer})
     monkeypatch.setattr(quiz_agent, "llm", fake_llm)
 

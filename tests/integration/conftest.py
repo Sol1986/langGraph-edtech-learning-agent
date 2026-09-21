@@ -24,7 +24,6 @@ def patch_qdrant_config(monkeypatch):
 @pytest.fixture(autouse=True)
 def reset_vector_store_cache(monkeypatch):
     monkeypatch.setattr(quiz_agent, "_vector_store", None)
-    monkeypatch.setattr(quiz_agent, "_chunk_count", None)
 
 
 @pytest.fixture
@@ -34,7 +33,10 @@ def fake_vector_store(monkeypatch):
     retriever calls."""
     store = FakeVectorStore()
     monkeypatch.setattr(quiz_agent, "_vector_store", store)
-    monkeypatch.setattr(quiz_agent, "_chunk_count", 5)
+    # get_chunk_count() queries Qdrant on every call now, so fake it. server.py imports
+    # the function by name, so both references must be patched (same as `llm` below).
+    monkeypatch.setattr(quiz_agent, "get_chunk_count", lambda: 5)
+    monkeypatch.setattr(server, "get_chunk_count", lambda: 5)
     return store
 
 
