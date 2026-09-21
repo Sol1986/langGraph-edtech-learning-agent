@@ -129,6 +129,14 @@ no-LLM pass/fail summary of the learner's first-attempt results).
 - [Next.js](https://nextjs.org/) 16 + React 19
 - Tailwind CSS
 
+**Infrastructure & CI/CD**
+- [Docker](https://www.docker.com/) — containerized backend (`Dockerfile`)
+- [GitHub Actions](https://docs.github.com/actions) — lint + tests on every pull request; build and deploy on merge to `main` (`.github/workflows/deploy.yml`)
+- [Amazon ECR](https://aws.amazon.com/ecr/) — private Docker image registry
+- [Amazon ECS on AWS Fargate](https://aws.amazon.com/fargate/) — serverless container hosting
+- [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/) — runtime secrets injected into the container
+- [Amazon CloudWatch Logs](https://aws.amazon.com/cloudwatch/) — container logs
+
 ## Project structure
 
 ```
@@ -140,6 +148,8 @@ no-LLM pass/fail summary of the learner's first-attempt results).
 │   ├── summary.py          # Deterministic scoring/summary logic
 │   ├── schemas.py          # Pydantic request/response models
 │   └── config.py           # Centralized env var loading
+├── .github/workflows/
+│   └── deploy.yml         # CI/CD: lint + tests, then build → ECR → ECS Fargate
 ├── Dockerfile             # Backend container image
 ├── .dockerignore
 ├── quiz-agent/            # Next.js frontend
@@ -212,6 +222,72 @@ The container runs as a non-root user and listens on `0.0.0.0:8000`. It needs
 CORS only allows the frontend at `http://localhost:3000` / `http://127.0.0.1:3000`,
 so add your frontend's origin in `src/server.py` if you host it elsewhere.
 
+## CI/CD and deployment (GitHub Actions → AWS ECS Fargate)
+
+The backend is containerized and **deployed to AWS ECS on Fargate** by an automated
+CI/CD pipeline defined in `.github/workflows/deploy.yml`.
+
+```mermaid
+flowchart LR
+    A["Pull request / merge to main"] --> B["GitHub Actions: ruff + pytest"]
+    B -->|"merge to main only"| C["Build Docker image"]
+    C -->|"GitHub OIDC role, no stored AWS keys"| D[("Amazon ECR")]
+    D --> E["ECS Fargate service"]
+    F[("AWS Secrets Manager")] -.-> E
+    E --> G["Redis Cloud, Qdrant Cloud, OpenAI"]
+```
+
+| Trigger | What runs |
+|---|---|
+| **Pull request** to `main` | Lint (`ruff`) and tests (`pytest`) against a Redis service container. The deploy job is skipped. |
+| **Merge / push** to `main` | The same tests; then, only if they pass: build the Docker image, push it to ECR, register a new ECS task definition revision pointing at it, update the service, and wait until the rollout is healthy. |
+
+How it works:
+
+- **Tests in CI.** The test job starts a `redis:8` service container (RedisJSON and
+  RediSearch are built in) because `src/quiz_agent.py` connects to Redis at import
+  time. The LLM and Qdrant are faked in the tests, so CI makes no real API calls and
+  only needs dummy environment variables.
+- **No AWS keys stored in GitHub.** The workflow authenticates with GitHub's OIDC
+  token and assumes an IAM role whose trust policy only accepts this repository's
+  `main` branch. The role is least-privilege: push to one ECR repository, update one
+  ECS service.
+- **Immutable, traceable images.** Each image is tagged with the git commit SHA. An
+  ECR lifecycle rule keeps only the newest images.
+- **Runtime secrets.** `OPENAI_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY` and `REDIS_URL`
+  live in AWS Secrets Manager and are injected into the container when it starts —
+  never baked into the image or committed.
+- **Runtime.** A Fargate task (0.5 vCPU / 1 GB) runs the container as a non-root user
+  and logs to CloudWatch. Conversation state lives in Redis Cloud, outside the
+  container, so a redeploy doesn't lose paused quizzes.
+- **Health endpoints.** `GET /health` is a liveness check that never touches Redis;
+  `GET /health/ready` also verifies the Redis connection.
+- **Safe rollouts.** ECS does a rolling deployment with a circuit breaker that rolls
+  back a failed release, and the pipeline waits for the service to stabilize. A
+  branch ruleset on `main` requires a pull request and a passing `Run Linting and
+  Tests` check before merging.
+
+To reproduce this in your own fork you need:
+
+| Item | Value the workflow expects |
+|---|---|
+| GitHub repository secrets | `AWS_ROLE_TO_ASSUME` (IAM role ARN), `AWS_REGION`, `AWS_ECR_REPOSITORY` (repository name only) |
+| ECR repository | the name you put in `AWS_ECR_REPOSITORY` (`memorang` here) |
+| ECS cluster / service | `memorang-cluster` / `memorang-service2` |
+| ECS task definition | family `memorang-task`, container `memorang-api`, port `8000` |
+
+The cluster, service and task definition names are set in `.github/workflows/deploy.yml`.
+
+**Current status and limitations**
+
+- The API has **no authentication yet**, so the ECS service is only reachable from a
+  single allowed IP address (security group). There is no load balancer, HTTPS or
+  custom domain yet, which are the next steps before opening it to other users.
+- The service is scaled to zero tasks when idle to avoid cost. Deploys still register
+  the new image and task definition; set the service's desired count to `1` to run it.
+- The Redis Cloud free plan does not support TLS, so avoid sensitive documents until
+  that's upgraded.
+
 ## API endpoints
 
 | Method | Path                        | Description                                              |
@@ -220,6 +296,8 @@ so add your frontend's origin in `src/server.py` if you host it elsewhere.
 | POST   | `/api/resume/{thread_id}`   | Submits (or approves) feedback and resumes the graph to completion |
 | POST   | `/api/hint`                 | Returns a RAG-grounded hint for a quiz question, without revealing the answer |
 | POST   | `/api/summary`              | Computes a deterministic score/summary from quiz results |
+| GET    | `/health`                   | Liveness check (does not touch Redis) |
+| GET    | `/health/ready`             | Readiness check: 200 if Redis is reachable, 503 otherwise |
 
 ## Notes
 
