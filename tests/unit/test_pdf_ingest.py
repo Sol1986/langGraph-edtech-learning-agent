@@ -1,6 +1,6 @@
 import pytest
 
-import src.pdf_ingest as pdf_ingest
+from src import pdf_ingest
 
 
 def test_extract_pages_returns_page_dicts(sample_pdf_bytes):

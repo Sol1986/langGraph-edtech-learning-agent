@@ -18,8 +18,7 @@ def test_cors_headers_present_for_frontend_origin(client):
 def test_unhandled_exception_returns_structured_json(monkeypatch):
     from fastapi.testclient import TestClient
 
-    import src.quiz_agent as quiz_agent
-    import src.server as server
+    from src import quiz_agent, server
 
     def boom(config):
         raise RuntimeError("simulated failure")
