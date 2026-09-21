@@ -1,0 +1,14 @@
+.venv
+.git
+.env
+node_modules
+quiz-agent
+__pycache__
+**/__pycache__
+.pytest_cache
+.ruff_cache
+tests
+docs
+notebooks
+PLAN.md
+prompt.md

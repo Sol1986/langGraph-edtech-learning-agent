@@ -119,9 +119,10 @@ no-LLM pass/fail summary of the learner's first-attempt results).
 ## Tech stack
 
 **Backend**
-- [FastAPI](https://fastapi.tiangolo.com/) — HTTP API (`server.py`)
-- [LangGraph](https://langchain-ai.github.io/langgraph/) + [LangChain](https://python.langchain.com/) — the quiz-generation agent (`quiz_agent.py`)
-- [Qdrant](https://qdrant.tech/) — vector store for document chunk embeddings (`pdf_ingest.py`)
+- [FastAPI](https://fastapi.tiangolo.com/) — HTTP API (`src/server.py`)
+- [LangGraph](https://langchain-ai.github.io/langgraph/) + [LangChain](https://python.langchain.com/) — the quiz-generation agent (`src/quiz_agent.py`)
+- [Qdrant](https://qdrant.tech/) — vector store for document chunk embeddings (`src/pdf_ingest.py`)
+- [Redis](https://redis.io/) — LangGraph checkpointer, so paused threads persist across restarts (`src/quiz_agent.py`)
 - [OpenAI](https://platform.openai.com/) — chat + embedding models
 
 **Frontend** (`quiz-agent/`)
@@ -132,12 +133,15 @@ no-LLM pass/fail summary of the learner's first-attempt results).
 
 ```
 .
-├── server.py           # FastAPI app: HTTP endpoints
-├── quiz_agent.py        # LangGraph agent: state, nodes, and graph wiring
-├── pdf_ingest.py        # PDF → text → chunks → Qdrant embeddings
-├── summary.py           # Deterministic scoring/summary logic
-├── schemas.py            # Pydantic request/response models
-├── config.py             # Centralized env var loading
+├── src/
+│   ├── server.py          # FastAPI app: HTTP endpoints
+│   ├── quiz_agent.py       # LangGraph agent: state, nodes, graph wiring, Redis checkpointer
+│   ├── pdf_ingest.py       # PDF → text → chunks → Qdrant embeddings
+│   ├── summary.py          # Deterministic scoring/summary logic
+│   ├── schemas.py          # Pydantic request/response models
+│   └── config.py           # Centralized env var loading
+├── Dockerfile             # Backend container image
+├── .dockerignore
 ├── quiz-agent/            # Next.js frontend
 ├── tests/
 │   ├── unit/              # Fast, no external services
@@ -175,9 +179,12 @@ no-LLM pass/fail summary of the learner's first-attempt results).
    (use `rediss://` for TLS).
 3. Run the API server:
    ```bash
-   uv run python server.py
+   uv run python -m src.server
    ```
-   The API is served at `http://127.0.0.1:8000`.
+   The API is served at `http://127.0.0.1:8000` (interactive docs at `/docs`).
+
+   Run it as a module from the project root (`-m src.server`), not as
+   `python src/server.py` — the code imports its siblings as `src.*`.
 
 ### Frontend setup
 
@@ -189,6 +196,21 @@ npm run dev
 
 The frontend expects the backend running at `http://127.0.0.1:8000` and is
 itself served at `http://localhost:3000`.
+
+### Running the backend with Docker
+
+The `Dockerfile` builds the backend only (not the frontend). Secrets are not
+baked into the image — pass them at run time from your `.env`:
+
+```bash
+docker build -t memorang .
+docker run --env-file .env -p 8000:8000 memorang
+```
+
+The container runs as a non-root user and listens on `0.0.0.0:8000`. It needs
+`OPENAI_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY` and a reachable `REDIS_URL`.
+CORS only allows the frontend at `http://localhost:3000` / `http://127.0.0.1:3000`,
+so add your frontend's origin in `src/server.py` if you host it elsewhere.
 
 ## API endpoints
 
@@ -207,5 +229,5 @@ itself served at `http://localhost:3000`.
   `REDIS_URL`), so in-progress threads survive a server restart and can be
   resumed with the same `thread_id`. Checkpoints have no TTL yet, so old
   threads accumulate in Redis until removed.
-- Redis is required at startup: `quiz_agent.py` creates its search indexes on
+- Redis is required at startup: `src/quiz_agent.py` creates its search indexes on
   import, so the server will not start without a reachable `REDIS_URL`.
