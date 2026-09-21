@@ -2,6 +2,46 @@ def test_app_boots(client):
     assert client is not None
 
 
+def test_health_is_ok_without_touching_redis(client, monkeypatch):
+    from src import server
+
+    def boom():
+        raise AssertionError("/health must not call Redis")
+
+    monkeypatch.setattr(server._health_redis, "ping", boom)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "healthy"}
+
+
+def test_ready_returns_200_when_redis_answers(client, monkeypatch):
+    from src import server
+
+    monkeypatch.setattr(server._health_redis, "ping", lambda: True)
+
+    response = client.get("/health/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "healthy", "redis": "connected"}
+
+
+def test_ready_returns_503_without_leaking_details_when_redis_is_down(client, monkeypatch):
+    from src import server
+
+    def boom():
+        raise server.redis.ConnectionError("Error connecting to secret-host.example:1234")
+
+    monkeypatch.setattr(server._health_redis, "ping", boom)
+
+    response = client.get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "unavailable", "redis": "unreachable"}
+    assert "secret-host" not in response.text
+
+
 def test_cors_headers_present_for_frontend_origin(client):
     response = client.options(
         "/api/summary",
