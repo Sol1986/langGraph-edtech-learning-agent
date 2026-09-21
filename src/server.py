@@ -1,12 +1,14 @@
 import uuid
 from typing import Annotated
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+import redis
+from fastapi import FastAPI, File, HTTPException, Response, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from src.config import require_redis_url
 from src.pdf_ingest import EmptyPdfError, InvalidPdfError, ingest_pdf
 from src.quiz_agent import get_chunk_count, get_vector_store, graph, llm
 from src.schemas import (
@@ -39,6 +41,33 @@ app.add_middleware(
 async def unhandled_exception_handler(request, exc: Exception) -> JSONResponse:
     """Centralized error handler (per CLAUDE.md): return structured JSON, never a raw traceback."""
     return JSONResponse(status_code=500, content={"error": type(exc).__name__, "detail": str(exc)})
+
+
+# Separate client with short timeouts so a slow Redis can't hang the readiness check.
+# from_url() is lazy: it doesn't connect until the first command.
+_health_redis = redis.Redis.from_url(
+    require_redis_url(), socket_connect_timeout=2, socket_timeout=2
+)
+
+
+@app.get("/health")
+def health_check() -> dict:
+    """Liveness: the process is up and serving. Deliberately does not touch Redis, so a
+    Redis outage can't make ECS/a load balancer kill and restart healthy tasks."""
+    return {"status": "healthy"}
+
+
+@app.get("/health/ready")
+def readiness_check(response: Response) -> dict:
+    """Readiness: can we reach Redis? For monitoring, not for restarting tasks.
+    Plain `def` so FastAPI runs the blocking ping in a worker thread. The error detail is
+    intentionally generic: a Redis exception message would leak the host and port."""
+    try:
+        _health_redis.ping()
+    except redis.RedisError:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "unavailable", "redis": "unreachable"}
+    return {"status": "healthy", "redis": "connected"}
 
 
 @app.post("/api/upload-pdf", response_model=UploadPdfResponse)
