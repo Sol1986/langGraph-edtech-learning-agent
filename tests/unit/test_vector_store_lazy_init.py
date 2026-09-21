@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-import quiz_agent
+import src.quiz_agent as quiz_agent
 from tests._fakes import FakeVectorStore
 
 MEMORANG_ROOT = Path(__file__).resolve().parents[2]

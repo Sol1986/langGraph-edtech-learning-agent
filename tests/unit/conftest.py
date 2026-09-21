@@ -1,7 +1,7 @@
 import pytest
 
-import config
-import quiz_agent
+import src.config as config
+import src.quiz_agent as quiz_agent
 
 
 @pytest.fixture(autouse=True)

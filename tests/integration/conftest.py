@@ -1,10 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
 
-import config
-import pdf_ingest
-import quiz_agent
-import server
+import src.config as config
+import src.pdf_ingest as pdf_ingest
+import src.quiz_agent as quiz_agent
+import src.server as server
 from tests._fakes import FakeLLM, FakeVectorStore
 
 

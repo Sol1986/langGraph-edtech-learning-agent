@@ -17,7 +17,7 @@ from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 from qdrant_client import QdrantClient
 
-from config import QDRANT_COLLECTION_NAME, require_qdrant_config
+from src.config import QDRANT_COLLECTION_NAME, require_qdrant_config
 
 MAX_PDF_SIZE_BYTES = 25 * 1024 * 1024  # sets a maximum file size limit of exactly 25 Megabytes (MB)
 

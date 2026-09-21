@@ -138,7 +138,6 @@ no-LLM pass/fail summary of the learner's first-attempt results).
 ├── summary.py           # Deterministic scoring/summary logic
 ├── schemas.py            # Pydantic request/response models
 ├── config.py             # Centralized env var loading
-├── main.py               # Offline CLI to test PDF ingestion without the frontend
 ├── quiz-agent/            # Next.js frontend
 ├── tests/
 │   ├── unit/              # Fast, no external services
@@ -199,15 +198,6 @@ itself served at `http://localhost:3000`.
 | POST   | `/api/resume/{thread_id}`   | Submits (or approves) feedback and resumes the graph to completion |
 | POST   | `/api/hint`                 | Returns a RAG-grounded hint for a quiz question, without revealing the answer |
 | POST   | `/api/summary`              | Computes a deterministic score/summary from quiz results |
-
-## Testing & linting
-
-```bash
-make check        # ruff lint + format check
-make test          # unit tests (tests/unit)
-make integration    # integration tests (tests/integration)
-make verify-phase    # all of the above
-```
 
 ## Notes
 

@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import Any
 
-import quiz_agent
+import src.quiz_agent as quiz_agent
 
 
 class _FakeStructuredClient:

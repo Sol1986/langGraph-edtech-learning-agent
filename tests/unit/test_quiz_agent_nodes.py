@@ -1,6 +1,6 @@
 import pytest
 
-import quiz_agent
+import src.quiz_agent as quiz_agent
 from tests._fakes import (
     FakeLLM,
     make_chunk_review,

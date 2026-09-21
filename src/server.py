@@ -7,9 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from pdf_ingest import EmptyPdfError, InvalidPdfError, ingest_pdf
-from quiz_agent import get_chunk_count, get_vector_store, graph, llm
-from schemas import (
+from src.pdf_ingest import EmptyPdfError, InvalidPdfError, ingest_pdf
+from src.quiz_agent import get_chunk_count, get_vector_store, graph, llm
+from src.schemas import (
     HintRequest,
     HintResponse,
     QuizItem,
@@ -19,7 +19,7 @@ from schemas import (
     SummaryResponse,
     UploadPdfResponse,
 )
-from summary import compute_summary
+from src.summary import compute_summary
 
 app = FastAPI()
 

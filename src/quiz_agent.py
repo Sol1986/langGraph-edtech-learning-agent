@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient
 from typing_extensions import TypedDict
 
-from config import QDRANT_API_KEY, QDRANT_COLLECTION_NAME, QDRANT_URL, require_redis_url
+from src.config import QDRANT_API_KEY, QDRANT_COLLECTION_NAME, QDRANT_URL, require_redis_url
 
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 

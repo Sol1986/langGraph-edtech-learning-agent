@@ -1,5 +1,5 @@
-from schemas import QuestionResult
-from summary import compute_summary
+from src.schemas import QuestionResult
+from src.summary import compute_summary
 
 
 def test_all_correct_passes_with_no_focus_topics():

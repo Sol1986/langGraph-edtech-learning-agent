@@ -8,7 +8,7 @@ first attempt -- retries let the learner reach the correct answer without
 further hurting the score, but the first miss still surfaces here.
 """
 
-from schemas import QuestionResult, SummaryResponse
+from src.schemas import QuestionResult, SummaryResponse
 
 PASS_THRESHOLD = 0.70
 
