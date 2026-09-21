@@ -131,7 +131,7 @@ def test_answer_question_attaches_known_topic(monkeypatch):
 
     fake_store = FakeVectorStore()
     monkeypatch.setattr(quiz_agent, "_vector_store", fake_store)
-    monkeypatch.setattr(quiz_agent, "_chunk_count", 5)
+    monkeypatch.setattr(quiz_agent, "get_chunk_count", lambda: 5)
     fake_llm = FakeLLM(
         {quiz_agent.QuestionAnswer: lambda: make_question_answer(topic="wrong-guess")}
     )

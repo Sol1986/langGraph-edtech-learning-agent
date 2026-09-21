@@ -21,11 +21,9 @@ def patch_qdrant_config(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def reset_vector_store_cache(monkeypatch):
-    """quiz_agent.get_vector_store()/get_chunk_count() cache their result in
-    module-level globals -- reset them before every test so tests don't leak
-    state into each other."""
+    """quiz_agent.get_vector_store() caches its result in a module-level global --
+    reset it before every test so tests don't leak state into each other."""
     monkeypatch.setattr(quiz_agent, "_vector_store", None)
-    monkeypatch.setattr(quiz_agent, "_chunk_count", None)
 
 
 @pytest.fixture
