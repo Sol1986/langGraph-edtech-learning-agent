@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-import src.quiz_agent as quiz_agent
+from src import quiz_agent
 from tests._fakes import FakeVectorStore
 
 MEMORANG_ROOT = Path(__file__).resolve().parents[2]
@@ -15,15 +15,13 @@ def test_import_does_not_eagerly_connect_to_qdrant():
     """Regression test for the original bug: `vector_store = QdrantVectorStore
     .from_existing_collection(...)` used to run at module import time, so
     starting the server before any PDF was uploaded would crash. Spawns a
-    fresh interpreter with no Qdrant/OpenAI credentials set and asserts a
-    plain `import quiz_agent` succeeds -- mirrors the Phase 1 manual check."""
-    env = {
-        k: v
-        for k, v in os.environ.items()
-        if k not in ("QDRANT_URL", "QDRANT_API_KEY", "OPENAI_API_KEY")
-    }
+    fresh interpreter with no Qdrant credentials set and asserts a plain
+    `import src.quiz_agent` succeeds -- mirrors the Phase 1 manual check.
+    OPENAI_API_KEY and REDIS_URL are kept: quiz_agent needs both at import
+    time (OpenAI client construction, RedisSaver.setup())."""
+    env = {k: v for k, v in os.environ.items() if k not in ("QDRANT_URL", "QDRANT_API_KEY")}
     result = subprocess.run(
-        [sys.executable, "-c", "import quiz_agent"],
+        [sys.executable, "-c", "import src.quiz_agent"],
         cwd=str(MEMORANG_ROOT),
         env=env,
         capture_output=True,

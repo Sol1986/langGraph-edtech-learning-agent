@@ -1,0 +1,102 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ] # Tests + deploy on every push/merge to main
+  pull_request:
+    branches: [ "main" ] # Tests only (deploy is skipped) so failures show up before merging
+
+permissions:
+  id-token: write   # Required for securely authenticating with AWS via OIDC
+  contents: read    # Required to checkout your repository code
+
+jobs:
+  # ==========================================
+  # STAGE 1: AUTOMATIC TESTING & LINTING
+  # ==========================================
+  test:
+    name: Run Linting and Tests
+    runs-on: ubuntu-latest
+
+    # quiz_agent.py connects to Redis at import time (RedisSaver.setup()), so the
+    # tests need a real Redis with the JSON + Search modules (built into Redis 8).
+    services:
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.11.32" # Pinned to the uv version used locally so uv.lock behaves the same in CI
+          enable-cache: true # Speeds up subsequent runs drastically
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12" # Matches the Docker image (python3.12)
+
+      - name: Install Dependencies
+        run: uv sync --frozen --all-groups
+
+      - name: Run Ruff Lint Check
+        run: uv run ruff check src/
+
+      - name: Run Pytest
+        run: uv run pytest
+        env:
+          # Dummy values only: the tests fake the LLM and Qdrant, so nothing real is called.
+          # These exist because config/quiz_agent read them at import time.
+          REDIS_URL: redis://localhost:6379
+          OPENAI_API_KEY: test-key
+          QDRANT_URL: http://fake-qdrant.test
+          QDRANT_API_KEY: fake-key
+
+  # ==========================================
+  # STAGE 2: BUILD, STORE IN ECR, & DEPLOY
+  # ==========================================
+  deploy:
+    name: Build, Push to ECR, and Deploy to AWS
+    needs: test # This ensures deployment ONLY happens if all tests pass!
+    if: github.event_name == 'push' # Never deploy from a pull request
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # We will configure these secure secrets in GitHub in the next step
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }} # Tags the image with the unique Git commit ID
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      # NOTE: The actual AWS ECS deployment step will be appended here 
+      # once we set up your AWS cluster resources.

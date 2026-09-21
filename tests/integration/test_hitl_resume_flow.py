@@ -1,4 +1,4 @@
-import src.quiz_agent as quiz_agent
+from src import quiz_agent
 from tests._fakes import full_llm_responses
 
 
